@@ -43,20 +43,21 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
   if (!resolved || resolved.site.status !== "yayinda") return { ok: false, code: "not_found" };
   const { site, product } = resolved;
 
+  // Collect every field error in one pass so the customer fixes the form once.
+  const raw = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const fieldErrors: Record<string, string> = {};
   const parsed = OrderRequestSchema.safeParse(body);
   if (!parsed.success) {
-    const fe: Record<string, string> = {};
-    for (const i of parsed.error.issues) { const k = String(i.path[0] ?? "form"); fe[k] ??= i.code === "invalid_type" ? "Bu alan gerekli." : i.message; }
-    return invalid(fe);
+    for (const i of parsed.error.issues) { const k = String(i.path[0] ?? "form"); fieldErrors[k] ??= i.code === "invalid_type" ? "Bu alan gerekli." : i.message; }
+  } else if (parsed.data.website.trim()) {
+    return { ok: false, code: "spam" };
   }
+  const phone = typeof raw.phone === "string" ? normalizeTrPhone(raw.phone) : null;
+  if (!phone && !fieldErrors.phone) fieldErrors.phone = "Geçerli bir cep telefonu girin (5XX XXX XX XX).";
+  if (typeof raw.city === "string" && typeof raw.district === "string" && raw.city.trim() && raw.district.trim()
+      && !isValidCityDistrict(raw.city, raw.district)) fieldErrors.district ??= "Seçtiğiniz ilçe bu ile ait değil.";
+  if (!parsed.success || !phone || Object.keys(fieldErrors).length) return invalid(fieldErrors);
   const req = parsed.data;
-  if (req.website.trim()) return { ok: false, code: "spam" };
-
-  const fieldErrors: Record<string, string> = {};
-  const phone = normalizeTrPhone(req.phone);
-  if (!phone) fieldErrors.phone = "Geçerli bir cep telefonu girin (5XX XXX XX XX).";
-  if (!isValidCityDistrict(req.city, req.district)) fieldErrors.district = "Seçtiğiniz ilçe bu ile ait değil.";
-  if (!phone || Object.keys(fieldErrors).length) return invalid(fieldErrors);
 
   const existing = await findByKey(req.idempotencyKey);
   if (existing) return existing;

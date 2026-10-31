@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Satış Paneli
 
-## Getting Started
+Tek yönetim panelinden yönetilen, her ürünün kendi subdomain'inde yayınlandığı kapıda ödemeli satış sistemi.
 
-First, run the development server:
+- Tasarım: `docs/superpowers/specs/2026-10-31-coklu-subdomain-siparis-sistemi-design.md`
+- Plan 1 (bu sürüm): `docs/superpowers/plans/2026-10-31-plan-1-cekirdek.md`
+
+## Gereksinimler
+
+- Node 22, pnpm 10
+- PostgreSQL 16 (Docker ile ya da yerel kurulum)
+
+## Kurulum
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+cp .env.example .env
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`.env` içinde `BETTER_AUTH_SECRET` değerini uzun, rastgele bir metinle değiştirin.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm install
+```
 
-## Learn More
+```bash
+pnpm db:migrate && pnpm db:migrate:test
+```
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm seed:admin admin@ornek.com guclu-bir-sifre admin
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm seed:demo
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm dev
+```
 
-## Deploy on Vercel
+## Adresler
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Adres | Ne |
+|---|---|
+| http://panel.localhost:3000 | Yönetim paneli |
+| http://poset.localhost:3000 | Demo ürün sayfası |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`*.localhost` adresleri tarayıcılarda ek DNS ayarı olmadan bilgisayarınıza yönlenir.
+Yeni bir site açmak için panelde **Siteler → Yeni site** ekranından domain ve subdomain seçin.
+
+## Testler
+
+```bash
+pnpm test
+```
+
+```bash
+pnpm test:e2e
+```
+
+Birim ve entegrasyon testleri `satis_test` veritabanını kullanır (`DATABASE_URL_TEST`).
+Uçtan uca testler geliştirme sunucusuna (`pnpm dev`) ve geliştirme veritabanına bağlanır; önce `pnpm seed:demo` çalıştırın.
+
+## Yapı
+
+| Klasör | İçerik |
+|---|---|
+| `src/proxy.ts`, `src/tenancy/` | Host başlığına göre panel / site yönlendirmesi |
+| `src/pricing/quote.ts` | Saf fiyat motoru (sayfada ve sunucuda aynı hesap) |
+| `src/orders/` | Sipariş oluşturma, telefon normalizasyonu, durum geçişleri |
+| `src/admin/` | Panel veri katmanı (`store.ts`) ve sunucu aksiyonları (`actions.ts`) |
+| `src/app/%5Fsite/[host]/` | Landing şablonu ve teşekkür sayfası |
+| `src/app/admin/` | Yönetim paneli ekranları |
+| `data/tr-il-ilce.json` | İl / ilçe listesi |

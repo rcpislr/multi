@@ -106,6 +106,13 @@ describe("createOrder", () => {
     expect(r.fieldErrors.district).toBeTruthy();
   });
 
+  it("reports phone and district errors together with schema errors", async () => {
+    const s = await seedBasic();
+    const r = await createOrder("poset.localhost", body(s, { phone: "1234", district: "ÇANKAYA", address: "Kısa" }), meta);
+    if (r.ok || r.code !== "validation") throw new Error("expected validation");
+    expect(Object.keys(r.fieldErrors).sort()).toEqual(["address", "district", "phone"]);
+  });
+
   it("requires policy acceptance", async () => {
     const s = await seedBasic();
     expect(await createOrder("poset.localhost", body(s, { policyAccepted: false }), meta)).toMatchObject({ ok: false, code: "validation" });
