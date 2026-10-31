@@ -10,3 +10,10 @@ describe("formatTRY", () => {
   it("with kuruş", () => expect(formatTRY(59990)).toBe("599,90 ₺"));
   it("thousands separator", () => expect(formatTRY(120000)).toBe("1.200 ₺"));
 });
+
+import { parseTRYInput } from "@/lib/money";
+describe("parseTRYInput", () => {
+  it("comma decimals", () => expect(parseTRYInput("49,90")).toBe(4990));
+  it("whole lira with thousands dot", () => expect(parseTRYInput("1.200")).toBe(120000));
+  it("rejects garbage", () => expect(parseTRYInput("abc")).toBeNull());
+});
