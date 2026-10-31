@@ -28,3 +28,7 @@ body {
 @keyframes landing-marquee { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
 .landing-marquee { display: inline-block; animation: landing-marquee 30s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .landing-marquee { animation: none; } }
+
+@layer base {
+  *, ::before, ::after { border-color: var(--color-neutral-200); }
+}

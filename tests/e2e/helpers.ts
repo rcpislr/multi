@@ -14,3 +14,17 @@ export async function login(page: Page) {
   await page.getByRole("button", { name: "Giriş yap" }).click();
   await page.waitForURL("**/admin/orders");
 }
+
+/** Places an order on the poset demo site through the real landing form; returns the order number. */
+export async function placeOrder(page: Page, offerLabel = "3 Al 2 Öde"): Promise<string> {
+  await page.goto("http://poset.localhost:3000/");
+  await page.getByLabel(offerLabel, { exact: true }).check();
+  await page.getByLabel("Ad Soyad").fill("Ayşe Yılmaz");
+  await page.getByLabel("Telefon").fill("5321234567");
+  await page.getByLabel("İl", { exact: true }).selectOption("İSTANBUL");
+  await page.getByLabel("İlçe").selectOption("KADIKÖY");
+  await page.getByLabel("Adres").fill("Moda Mah. Örnek Sok. No 1");
+  await page.getByRole("button", { name: /siparişi tamamla/i }).click();
+  await page.waitForURL("**/tesekkurler**");
+  return page.getByTestId("order-no").innerText();
+}
