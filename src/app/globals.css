@@ -24,3 +24,7 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes landing-marquee { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
+.landing-marquee { display: inline-block; animation: landing-marquee 30s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .landing-marquee { animation: none; } }

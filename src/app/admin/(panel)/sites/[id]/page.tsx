@@ -7,6 +7,7 @@ import { updateSiteForm } from "@/admin/sites/actions";
 import { ActionForm, FormField } from "@/components/admin/action-form";
 import { Card, Input, Select } from "@/components/ui";
 import { formatTRY } from "@/lib/money";
+import { previewToken } from "@/landing/preview";
 import { minorToInput } from "@/lib/format";
 import type { ContentOverrides } from "@/content/schema";
 
@@ -23,7 +24,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/admin/sites" className="text-sm text-neutral-500">← Siteler</Link>
         <h1 className="text-xl font-semibold">{site.subdomain}.{domain.name}</h1>
-        <a className="text-sm underline" href={`${url}/?preview=1`} target="_blank" rel="noreferrer">Önizle</a>
+        <a className="text-sm underline" href={`${url}/?preview=${previewToken(site.id)}`} target="_blank" rel="noreferrer">Önizle</a>
       </div>
       {site.status === "yayinda" && !site.metaPixelId && (
         <p className="rounded bg-yellow-50 p-2 text-sm text-yellow-800" role="alert">Bu site yayında ama Meta pixel kimliği girilmemiş. Reklam dönüşümleri ölçülmeyecek.</p>
