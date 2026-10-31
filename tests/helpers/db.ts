@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
+import { emptyProductContent } from "@/content/schema";
 import { domains, products, offers, addons, addonOptions, sites, settings } from "@/db/schema";
 
 const TABLES = [
@@ -14,13 +15,9 @@ export async function resetDb(): Promise<void> {
 export async function seedBasic() {
   await db.insert(settings).values({ id: 1, businessInfo: {}, legalTexts: {}, shippingFeeMinor: 4990, freeShippingThresholdMinor: null });
   const [domain] = await db.insert(domains).values({ name: "localhost" }).returning();
-  // replaced by emptyProductContent() once Task 7 adds the content schema
-  const content = {
-    enabledSections: ["hero", "faq"], marquee: [], problems: [], features: [], steps: [], specs: [],
-    useCases: [], faq: [], gallery: [],
-    hero: { title: "Mini Poşet Kapatıcı", subtitle: "Tek dokunuşla kapat", ctaLabel: "Hemen Sipariş Ver" },
-    theme: { primaryColor: "#E23E7B" },
-  };
+  const content = emptyProductContent();
+  content.hero = { title: "Mini Poşet Kapatıcı", subtitle: "Tek dokunuşla kapat, tazeliği koru.", ctaLabel: "Hemen Sipariş Ver" };
+  content.faq = [{ q: "Pil dahil mi?", a: "Hayır, 2 adet AA pil ile çalışır." }];
   const [product] = await db.insert(products).values({
     name: "Mini Poşet Kapatıcı", sku: "PK1", vatRate: 20, costMinor: 9000, unitPriceMinor: 39900,
     trackStock: false, stockQty: 0, codFeeEnabled: false, codFeeCashMinor: 0, codFeeCardMinor: 0,

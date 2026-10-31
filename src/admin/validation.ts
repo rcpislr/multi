@@ -46,7 +46,7 @@ export function zodFieldErrors(err: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
   for (const issue of err.issues) {
     const key = issue.path.join(".");
-    if (!out[key]) out[key] = issue.message;
+    if (!out[key]) out[key] = issue.code === "invalid_type" ? "Geçerli bir değer girin." : issue.message;
   }
   return out;
 }
