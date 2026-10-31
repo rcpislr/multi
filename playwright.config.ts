@@ -6,7 +6,7 @@ export default defineConfig({
   use: { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined } },
   webServer: {
     command: "pnpm dev",
-    url: "http://panel.localhost:3000/admin/login",
+    port: 3000,
     reuseExistingServer: true,
     timeout: 120_000,
   },
