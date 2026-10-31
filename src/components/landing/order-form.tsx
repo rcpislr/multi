@@ -25,12 +25,17 @@ export function OrderForm({ model, cities }: { model: LandingModel; cities: stri
   const [pending, setPending] = React.useState(false);
   const [idempotencyKey] = React.useState(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random())));
 
-  React.useEffect(() => {
-    if (!city) { setDistricts([]); return; }
-    let alive = true;
-    fetch(`/api/districts?city=${encodeURIComponent(city)}`).then((r) => r.json()).then((d) => alive && setDistricts(d.districts ?? []));
-    return () => { alive = false; };
-  }, [city]);
+  const cityRequest = React.useRef(0);
+  function onCityChange(next: string) {
+    setCity(next);
+    setDistricts([]);
+    const req = ++cityRequest.current;
+    if (!next) return;
+    fetch(`/api/districts?city=${encodeURIComponent(next)}`)
+      .then((r) => r.json())
+      .then((d) => { if (req === cityRequest.current) setDistricts(d.districts ?? []); })
+      .catch(() => {});
+  }
 
   const offer = model.offers.find((o) => o.id === offerId);
   const selectedOptions = model.addons.flatMap((a) => {
@@ -138,7 +143,7 @@ export function OrderForm({ model, cities }: { model: LandingModel; cities: stri
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="o-city" className="mb-1 block text-sm font-semibold">İl</label>
-            <select id="o-city" name="city" value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} aria-invalid={!!errors.city} required>
+            <select id="o-city" name="city" value={city} onChange={(e) => onCityChange(e.target.value)} className={inputCls} aria-invalid={!!errors.city} required>
               <option value="">İl seçin</option>
               {cities.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
