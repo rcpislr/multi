@@ -33,9 +33,12 @@ export type CreateOrderResult =
   | { ok: false; code: "validation"; fieldErrors: Record<string, string> }
   | { ok: false; code: "not_found" | "offer_changed" | "spam" };
 
-async function findByKey(key: string): Promise<CreateOrderResult | null> {
-  const [o] = await db.select({ orderNo: orders.orderNo, publicToken: orders.publicToken }).from(orders).where(eq(orders.idempotencyKey, key));
-  return o ? { ok: true, ...o } : null;
+/** Replays an earlier submission of the same form; a key reused on another site is rejected. */
+async function findByKey(siteId: number, key: string): Promise<CreateOrderResult | null> {
+  const [o] = await db.select({ orderNo: orders.orderNo, publicToken: orders.publicToken, siteId: orders.siteId }).from(orders).where(eq(orders.idempotencyKey, key));
+  if (!o) return null;
+  if (o.siteId !== siteId) return { ok: false, code: "validation", fieldErrors: { idempotencyKey: "Geçersiz istek." } };
+  return { ok: true, orderNo: o.orderNo, publicToken: o.publicToken };
 }
 
 const invalid = (fieldErrors: Record<string, string>): CreateOrderResult => ({ ok: false, code: "validation", fieldErrors });
@@ -69,7 +72,7 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
   if (!parsed.success || !phone || !city || !district || Object.keys(fieldErrors).length) return invalid(fieldErrors);
   const req = parsed.data;
 
-  const existing = await findByKey(req.idempotencyKey);
+  const existing = await findByKey(site.id, req.idempotencyKey);
   if (existing) return existing;
 
   const [offer] = await db.select().from(offers)
@@ -124,7 +127,7 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
     });
   } catch (e) {
     if (isUniqueViolation(e)) {
-      const again = await findByKey(req.idempotencyKey);
+      const again = await findByKey(site.id, req.idempotencyKey);
       if (again) return again;
     }
     throw e;

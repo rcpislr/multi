@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { resolveSite } from "@/tenancy/resolve-site";
 import { listActiveOffers } from "@/admin/offers/store";
@@ -8,7 +9,10 @@ import { isValidPreviewToken } from "./preview";
 
 export type LandingLoad = { kind: "page"; model: LandingModel; preview: boolean } | { kind: "redirect"; url: string } | null;
 
-export async function loadLanding(host: string, previewTokenParam?: string): Promise<LandingLoad> {
+/** Memoized per request: generateMetadata and the page share one lookup. */
+export const loadLanding = cache(loadLandingUncached);
+
+async function loadLandingUncached(host: string, previewTokenParam?: string): Promise<LandingLoad> {
   let resolved = await resolveSite(host);
   let preview = false;
   if (!resolved && previewTokenParam) {

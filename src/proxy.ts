@@ -13,6 +13,11 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     case "site":
       return NextResponse.rewrite(new URL(route.rewrite + search, request.url));
+    case "to-panel": {
+      const panel = new URL("/admin", request.url);
+      panel.hostname = process.env.PANEL_HOST ?? "panel.localhost";
+      return NextResponse.redirect(panel);
+    }
     case "notfound":
       return NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404 });
   }

@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import { Button } from "@/components/ui";
+import { FieldContext } from "@/components/ui/field-context";
 import type { ActionResult } from "@/admin/validation";
 
 const FieldErrorsContext = React.createContext<Record<string, string>>({});
@@ -31,13 +32,13 @@ export function ActionForm({ action, children, submitLabel = "Kaydet", className
 }
 
 /** Labeled input wired to the surrounding ActionForm's field errors. */
-export function FormField({ name, label, hint, children }: { name: string; label: string; hint?: string; children: React.ReactElement<{ id?: string; name?: string; "aria-invalid"?: boolean }> }) {
+export function FormField({ name, label, hint, children }: { name: string; label: string; hint?: string; children: React.ReactNode }) {
   const error = useFieldError(name);
   const id = `f-${name.replace(/\W/g, "-")}`;
   return (
     <div className="space-y-1">
       <label htmlFor={id} className="block text-sm font-medium text-neutral-700">{label}</label>
-      {React.cloneElement(children, { id, name: children.props.name ?? name, "aria-invalid": !!error })}
+      <FieldContext.Provider value={{ id, name, invalid: !!error }}>{children}</FieldContext.Provider>
       {hint && !error && <p className="text-xs text-neutral-500">{hint}</p>}
       {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
     </div>

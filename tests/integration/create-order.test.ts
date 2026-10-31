@@ -65,6 +65,17 @@ describe("createOrder", () => {
     expect(await db.select().from(orders)).toHaveLength(1);
   });
 
+  it("idempotency key is scoped to the site", async () => {
+    const s = await seedBasic();
+    const [site] = await db.select().from(sites).where(eq(sites.id, s.siteId));
+    await db.insert(sites).values({ domainId: site!.domainId, subdomain: "mt", productId: s.productId, status: "yayinda" });
+    const b = body(s);
+    const a = await createOrder("poset.localhost", b, meta);
+    const c = await createOrder("mt.localhost", b, meta);
+    expect(a.ok).toBe(true);
+    expect(c).toMatchObject({ ok: false, code: "validation" });
+  });
+
   it("rejects archived offer with offer_changed", async () => {
     const s = await seedBasic();
     await db.update(offers).set({ archivedAt: new Date() }).where(eq(offers.id, s.offerIds.threeForTwo));

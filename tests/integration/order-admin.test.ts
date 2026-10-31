@@ -98,6 +98,14 @@ describe("order admin", () => {
     expect(byPhone.rows[0]!.phone).toBe("905321234567");
   });
 
+  it("export includes every row across batches", async () => {
+    const s = await seedBasic();
+    const nos = [(await order(s)).orderNo, (await order(s)).orderNo, (await order(s)).orderNo];
+    const { exportOrderRows } = await import("@/admin/orders/export");
+    const rows = await exportOrderRows({ page: 1, pageSize: 1 }, 1);
+    expect(rows.map((r) => r.orderNo).sort()).toEqual(nos.sort());
+  });
+
   it("export is forbidden for operator", async () => {
     await seedBasic();
     const res = await exportCsv(new Request("http://panel.localhost/admin/orders/export"));

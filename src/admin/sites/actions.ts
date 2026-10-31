@@ -1,6 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { invalidatePath as revalidatePath } from "@/lib/cache";
 import { ZodError } from "zod";
 import { requireUser } from "@/auth/guard";
 import { invalidateTags } from "@/lib/cache";
@@ -8,7 +8,7 @@ import { fdInt, fdStr } from "@/admin/form-data";
 import { zodFieldErrors, type ActionResult } from "@/admin/validation";
 import { parseTRYInput } from "@/lib/money";
 import type { Site } from "@/db/schema";
-import { SiteError, insertSite, updateSiteById, type UpdateSiteInput } from "./store";
+import { SiteError, getSiteWithDomain, insertSite, updateSiteById, type UpdateSiteInput } from "./store";
 
 export async function createSite(input: { domainId: number; subdomain: string; productId: number }): Promise<Site> {
   await requireUser("admin");
@@ -45,7 +45,11 @@ export async function updateSiteForm(_: ActionResult | null, fd: FormData): Prom
     if (minor === null) return { ok: false, fieldErrors: { [k]: "Geçerli bir tutar girin." } };
     priceOverrides[k.slice(6)] = minor;
   }
-  const overrides: Record<string, unknown> = {};
+  // The form manages only hero/theme; keep every other override (e.g. per-site FAQ) as it is.
+  const current = await getSiteWithDomain(id);
+  if (!current) return { ok: false, error: "Site bulunamadı." };
+  const { hero: _hero, theme: _theme, ...kept } = current.site.contentOverrides as Record<string, unknown>;
+  const overrides: Record<string, unknown> = { ...kept };
   const heroTitle = fdStr(fd, "heroTitle"), heroSubtitle = fdStr(fd, "heroSubtitle"), heroImage = fdStr(fd, "heroImageUrl"), heroVideo = fdStr(fd, "heroVideoUrl");
   const hero = Object.fromEntries(Object.entries({ title: heroTitle, subtitle: heroSubtitle, imageUrl: heroImage, videoUrl: heroVideo }).filter(([, v]) => v));
   if (Object.keys(hero).length) overrides.hero = hero;

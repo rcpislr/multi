@@ -14,6 +14,8 @@ test("create product, edit content, add versioned offer and addon", async ({ pag
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
   await page.getByRole("link", { name: "İçerik" }).click();
+  // react-hook-form fills inputs after hydration; wait for it before interacting
+  await expect(page.getByLabel("Başlık", { exact: true })).toHaveValue(name);
   await page.getByLabel("Alt başlık", { exact: true }).fill("Tek dokunuşla kapat");
   await page.getByRole("button", { name: "Soru ekle" }).click();
   await page.getByLabel("Soru", { exact: true }).fill("Pil dahil mi?");

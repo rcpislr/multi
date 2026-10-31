@@ -2,6 +2,7 @@ import { and, asc, eq, isNull, max, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { offers, type Offer } from "@/db/schema";
+import { isUniqueViolation } from "@/db/errors";
 
 export const OfferInputSchema = z.object({
   slotKey: z.string().trim().regex(/^[a-z0-9-]{1,30}$/, "Paket anahtarı küçük harf, rakam ve tire olmalı."),
@@ -25,6 +26,16 @@ export async function listActiveOffers(productId: number): Promise<Offer[]> {
 /** Editing an offer never mutates it: the active version is archived and a new version is inserted. */
 export async function saveOfferVersion(productId: number, raw: OfferInput): Promise<Offer> {
   const input = OfferInputSchema.parse(raw);
+  // Two first saves of a new slot race on (product, slot, version): retry once on the unique violation.
+  try {
+    return await saveOnce(productId, input);
+  } catch (e) {
+    if (!isUniqueViolation(e)) throw e;
+    return saveOnce(productId, input);
+  }
+}
+
+async function saveOnce(productId: number, input: OfferInput): Promise<Offer> {
   return db.transaction(async (tx) => {
     const [current] = await tx.select().from(offers)
       .where(and(eq(offers.productId, productId), eq(offers.slotKey, input.slotKey), isNull(offers.archivedAt)))

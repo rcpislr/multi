@@ -1,6 +1,8 @@
 /** Normalizes a Turkish mobile number to 905XXXXXXXXX, or null when it is not one. */
 export function normalizeTrPhone(raw: string): string | null {
-  const d = String(raw ?? "").replace(/\D/g, "");
+  let d = String(raw ?? "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2); // 0090… international prefix
+  if (d.length === 13 && d.startsWith("900")) d = `90${d.slice(3)}`; // +90 (0532) …
   if (d.length === 10 && d.startsWith("5")) return `90${d}`;
   if (d.length === 11 && d.startsWith("05")) return `9${d}`;
   if (d.length === 12 && d.startsWith("905")) return d;

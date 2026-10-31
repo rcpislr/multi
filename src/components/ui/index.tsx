@@ -1,5 +1,7 @@
+"use client";
 import * as React from "react";
 import { cn } from "@/lib/cn";
+import { FieldContext } from "./field-context";
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger";
 const btn: Record<BtnVariant, string> = {
@@ -20,14 +22,20 @@ export function Button({ variant = "primary", className, ...p }: React.ButtonHTM
 
 const field = "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 aria-[invalid=true]:border-red-500";
 
+function useFieldProps<T extends { id?: string; name?: string; "aria-invalid"?: React.AriaAttributes["aria-invalid"] }>(p: T): T {
+  const f = React.useContext(FieldContext);
+  if (!f) return p;
+  return { ...p, id: p.id ?? f.id, name: p.name ?? f.name, "aria-invalid": p["aria-invalid"] ?? f.invalid };
+}
+
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  function Input({ className, ...p }, ref) { return <input ref={ref} className={cn(field, className)} {...p} />; },
+  function Input({ className, ...p }, ref) { return <input ref={ref} className={cn(field, className)} {...useFieldProps(p)} />; },
 );
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  function Textarea({ className, ...p }, ref) { return <textarea ref={ref} className={cn(field, "min-h-20", className)} {...p} />; },
+  function Textarea({ className, ...p }, ref) { return <textarea ref={ref} className={cn(field, "min-h-20", className)} {...useFieldProps(p)} />; },
 );
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  function Select({ className, ...p }, ref) { return <select ref={ref} className={cn(field, className)} {...p} />; },
+  function Select({ className, ...p }, ref) { return <select ref={ref} className={cn(field, className)} {...useFieldProps(p)} />; },
 );
 
 export function Label({ className, ...p }: React.LabelHTMLAttributes<HTMLLabelElement>) {

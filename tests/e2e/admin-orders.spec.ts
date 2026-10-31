@@ -26,7 +26,11 @@ test("bulk status change from list", async ({ page }) => {
   await login(page);
   await page.getByLabel("Ara").fill(orderNo);
   await page.getByRole("button", { name: "Filtrele" }).click();
-  await page.getByLabel("Seç", { exact: true }).first().check();
+  // the table is a client component: retry until hydration makes row selection work
+  await expect(async () => {
+    await page.getByLabel("Seç", { exact: true }).first().check();
+    await expect(page.getByLabel("Yeni durum")).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 30_000 });
   await page.getByLabel("Yeni durum").selectOption("iptal");
   await page.getByRole("button", { name: "Durumu değiştir" }).click();
   await expect(page.getByRole("status")).toContainText("1 sipariş güncellendi.");

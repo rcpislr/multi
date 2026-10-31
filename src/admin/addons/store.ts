@@ -39,6 +39,11 @@ export async function upsertAddon(productId: number, id: number | null, raw: z.i
   return row!;
 }
 
+export async function getAddonProductId(addonId: number): Promise<number | null> {
+  const [a] = await db.select({ productId: addons.productId }).from(addons).where(eq(addons.id, addonId));
+  return a?.productId ?? null;
+}
+
 export async function upsertAddonOption(addonId: number, id: number | null, raw: z.input<typeof AddonOptionInputSchema>): Promise<AddonOption> {
   const input = AddonOptionInputSchema.parse(raw);
   if (id) {

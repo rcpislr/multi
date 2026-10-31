@@ -1,5 +1,6 @@
 import { getPanelUser, hasRole } from "@/auth/guard";
-import { listAddonLinesByOrder, listOrders } from "@/admin/orders/queries";
+import { listAddonLinesByOrder } from "@/admin/orders/queries";
+import { exportOrderRows } from "@/admin/orders/export";
 import { parseOrderFilters } from "@/admin/orders/filters";
 import { ORDER_STATUS_LABELS } from "@/orders/status";
 import { formatTrPhone } from "@/orders/phone";
@@ -16,9 +17,7 @@ export async function GET(request: Request) {
   const user = await getPanelUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   if (!hasRole(user.role, "admin")) return new Response("Forbidden", { status: 403 });
-  const f = parseOrderFilters(new URL(request.url).searchParams, 10_000);
-  f.page = 1;
-  const { rows } = await listOrders(f);
+  const rows = await exportOrderRows(parseOrderFilters(new URL(request.url).searchParams));
   const addons = await listAddonLinesByOrder(rows.map((r) => r.id));
   const header = ["Sipariş no", "Tarih", "Site", "Ürün", "Paket", "Ek ürünler", "Müşteri", "Telefon", "İl", "İlçe", "Adres", "Ödeme", "Toplam (TL)", "Durum"];
   const lines = rows.map((r) => [

@@ -17,5 +17,9 @@ describe("routeForRequest", () => {
     ["poset.localhost:3000", "/api/orders", { kind: "passthrough" }],
     ["poset.localhost:3000", "/_next/static/x.js", { kind: "passthrough" }],
     ["panel.localhost:3000", "/_site/poset.localhost/", { kind: "notfound" }],
+    ["poset.localhost:3000", "/api/auth/get-session", { kind: "notfound" }],
+    ["localhost:3000", "/", { kind: "to-panel" }],
+    ["localhost:3000", "/api/orders", { kind: "to-panel" }],
+    ["panel.localhost:3000", "/api/auth/get-session", { kind: "passthrough" }],
   ])("%s %s", (host, path, expected) => expect(routeForRequest(host, path, P)).toEqual(expected));
 });

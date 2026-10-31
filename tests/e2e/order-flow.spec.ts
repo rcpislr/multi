@@ -43,3 +43,16 @@ test("honeypot field cannot be autofilled as a website/url field", async ({ page
   await expect(page.locator('input[name="website"], input[name="url"], input[autocomplete="url"]')).toHaveCount(0);
   await expect(page.locator('input[name="hp_ref"]')).toHaveAttribute("autocomplete", "off");
 });
+
+test("security headers: thank-you page never leaks its token as a referrer", async ({ page }) => {
+  const landing = await page.goto("http://poset.localhost:3000/");
+  expect(landing?.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  expect(landing?.headers()["x-content-type-options"]).toBe("nosniff");
+  const thanks = await page.goto("http://poset.localhost:3000/tesekkurler?t=00000000000000000000000000000000");
+  expect(thanks?.headers()["referrer-policy"]).toBe("no-referrer");
+});
+
+test("auth endpoints are not served on site hosts", async ({ page }) => {
+  const res = await page.goto("http://poset.localhost:3000/api/auth/get-session");
+  expect(res?.status()).toBe(404);
+});

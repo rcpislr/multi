@@ -27,6 +27,14 @@ describe("saveOffer", () => {
     expect(active.filter((o) => o.isDefault)).toHaveLength(1);
     expect(active.find((o) => o.isDefault)!.slotKey).toBe("one");
   });
+  it("concurrent first saves of a new slot both succeed with distinct versions", async () => {
+    const s = await seedBasic();
+    const n = input({ slotKey: "5li", isDefault: false });
+    const [a, b] = await Promise.all([saveOffer(s.productId, n), saveOffer(s.productId, n)]);
+    expect([a.version, b.version].sort()).toEqual([1, 2]);
+    expect((await listActiveOffers(s.productId)).filter((o) => o.slotKey === "5li")).toHaveLength(1);
+  });
+
   it("rejects paidQty < 1 and negative price", async () => {
     const s = await seedBasic();
     await expect(saveOffer(s.productId, input({ slotKey: "x", paidQty: 0 }))).rejects.toThrow();
