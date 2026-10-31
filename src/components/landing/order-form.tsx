@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { quote, type PaymentMethod } from "@/pricing/quote";
 import { formatTRY } from "@/lib/money";
 import type { LandingModel } from "@/landing/model";
+import { uuidV4 } from "@/lib/uuid";
+
+/** Fields rendered next to an input; any other server error is shown at form level. */
+const FIELD_KEYS = new Set(["customerName", "phone", "city", "district", "address", "paymentMethod", "policyAccepted"]);
 
 type FieldErrors = Record<string, string>;
 const inputCls = "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 aria-[invalid=true]:border-red-500";
@@ -23,7 +27,7 @@ export function OrderForm({ model, cities }: { model: LandingModel; cities: stri
   const [errors, setErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string>();
   const [pending, setPending] = React.useState(false);
-  const [idempotencyKey] = React.useState(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random())));
+  const [idempotencyKey] = React.useState(() => uuidV4());
 
   const cityRequest = React.useRef(0);
   function onCityChange(next: string) {
@@ -63,7 +67,8 @@ export function OrderForm({ model, cities }: { model: LandingModel; cities: stri
       body: JSON.stringify({
         idempotencyKey, offerId: offer.id, offerVersion: offer.version, addonOptionIds: selectedOptions.map((s) => s.opt.id),
         customerName: fd.get("customerName"), phone: fd.get("phone"), city: fd.get("city"), district: fd.get("district"),
-        address: fd.get("address"), paymentMethod: payment, policyAccepted: fd.get("policy") === "on", website: fd.get("website"), utm,
+        address: fd.get("address"), paymentMethod: payment, policyAccepted: fd.get("policy") === "on", website: fd.get("hp_ref"), utm,
+        expectedGrandTotalMinor: q?.grandTotalMinor,
       }),
     }).catch(() => null);
     setPending(false);
@@ -71,7 +76,13 @@ export function OrderForm({ model, cities }: { model: LandingModel; cities: stri
     const body = await res.json().catch(() => ({}));
     if (res.status === 201 && body.publicToken) { router.push(`/tesekkurler?t=${body.publicToken}`); return; }
     if (res.status === 409) { setFormError("Fiyatlar güncellendi, sayfa yenileniyor…"); setTimeout(() => window.location.reload(), 1200); return; }
-    if (res.status === 422) { setErrors(body.fieldErrors ?? {}); setFormError("Lütfen işaretli alanları kontrol edin."); return; }
+    if (res.status === 422) {
+      const fe: FieldErrors = body.fieldErrors ?? {};
+      const other = Object.entries(fe).filter(([k]) => !FIELD_KEYS.has(k)).map(([, m]) => m);
+      setErrors(fe);
+      setFormError(other.length ? `${other.join(" ")} Sayfayı yenileyip tekrar deneyin.` : "Lütfen işaretli alanları kontrol edin.");
+      return;
+    }
     if (res.ok) { setFormError("Siparişiniz alınamadı. Lütfen bizimle iletişime geçin."); return; }
     setFormError("Bir hata oluştu. Lütfen tekrar deneyin.");
   }
@@ -164,8 +175,8 @@ export function OrderForm({ model, cities }: { model: LandingModel; cities: stri
           <Err msg={errors.address} />
         </div>
         <div className="absolute -left-[9999px]" aria-hidden>
-          <label htmlFor="o-website">Web sitesi</label>
-          <input id="o-website" name="website" tabIndex={-1} autoComplete="off" />
+          <label htmlFor="o-hp">Bu alanı boş bırakın</label>
+          <input id="o-hp" name="hp_ref" type="text" tabIndex={-1} autoComplete="off" data-1p-ignore data-lpignore="true" />
         </div>
       </div>
 

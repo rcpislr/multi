@@ -37,3 +37,9 @@ test("unknown subdomain is 404", async ({ page }) => {
   const res = await page.goto("http://yok.localhost:3000/");
   expect(res?.status()).toBe(404);
 });
+
+test("honeypot field cannot be autofilled as a website/url field", async ({ page }) => {
+  await page.goto("http://poset.localhost:3000/");
+  await expect(page.locator('input[name="website"], input[name="url"], input[autocomplete="url"]')).toHaveCount(0);
+  await expect(page.locator('input[name="hp_ref"]')).toHaveAttribute("autocomplete", "off");
+});

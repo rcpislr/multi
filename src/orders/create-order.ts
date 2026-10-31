@@ -5,7 +5,7 @@ import { addonOptions, addons, offers, orderEvents, orderItems, orders } from "@
 import { isUniqueViolation } from "@/db/errors";
 import { resolveSite } from "@/tenancy/resolve-site";
 import { getSettings } from "@/admin/settings/store";
-import { isValidCityDistrict, trUpper } from "@/geo/tr";
+import { canonicalCity, canonicalDistrict } from "@/geo/tr";
 import { PRICING_ENGINE_VERSION, quote, type QuoteInput } from "@/pricing/quote";
 import { normalizeTrPhone } from "./phone";
 import { newOrderNo, newPublicToken } from "./order-no";
@@ -24,6 +24,8 @@ export const OrderRequestSchema = z.object({
   policyAccepted: z.literal(true, { error: "Devam etmek için sözleşmeyi onaylayın." }),
   website: z.string().default(""),
   utm: z.record(z.string(), z.string().max(200)).default({}).refine((u) => Object.keys(u).length <= 10),
+  /** The total the customer saw; any difference means a price input changed while the page was open. */
+  expectedGrandTotalMinor: z.number().int().min(0),
 });
 
 export type CreateOrderResult =
@@ -40,7 +42,7 @@ const invalid = (fieldErrors: Record<string, string>): CreateOrderResult => ({ o
 
 export async function createOrder(host: string, body: unknown, meta: { ip: string; userAgent: string }): Promise<CreateOrderResult> {
   const resolved = await resolveSite(host);
-  if (!resolved || resolved.site.status !== "yayinda") return { ok: false, code: "not_found" };
+  if (!resolved || resolved.site.status !== "yayinda" || resolved.product.status !== "aktif") return { ok: false, code: "not_found" };
   const { site, product } = resolved;
 
   // Collect every field error in one pass so the customer fixes the form once.
@@ -54,9 +56,17 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
   }
   const phone = typeof raw.phone === "string" ? normalizeTrPhone(raw.phone) : null;
   if (!phone && !fieldErrors.phone) fieldErrors.phone = "Geçerli bir cep telefonu girin (5XX XXX XX XX).";
-  if (typeof raw.city === "string" && typeof raw.district === "string" && raw.city.trim() && raw.district.trim()
-      && !isValidCityDistrict(raw.city, raw.district)) fieldErrors.district ??= "Seçtiğiniz ilçe bu ile ait değil.";
-  if (!parsed.success || !phone || Object.keys(fieldErrors).length) return invalid(fieldErrors);
+  let city: string | null = null;
+  let district: string | null = null;
+  if (typeof raw.city === "string" && raw.city.trim()) {
+    city = canonicalCity(raw.city);
+    if (!city) fieldErrors.city ??= "Geçerli bir il seçin.";
+    else if (typeof raw.district === "string" && raw.district.trim()) {
+      district = canonicalDistrict(city, raw.district);
+      if (!district) fieldErrors.district ??= "Seçtiğiniz ilçe bu ile ait değil.";
+    }
+  }
+  if (!parsed.success || !phone || !city || !district || Object.keys(fieldErrors).length) return invalid(fieldErrors);
   const req = parsed.data;
 
   const existing = await findByKey(req.idempotencyKey);
@@ -72,7 +82,8 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
         .innerJoin(addons, eq(addons.id, addonOptions.addonId))
         .where(and(inArray(addonOptions.id, optionIds), eq(addons.productId, product.id), isNull(addons.archivedAt)))
     : [];
-  if (opts.length !== optionIds.length) return invalid({ addonOptionIds: "Seçilen ek ürün artık mevcut değil. Sayfayı yenileyin." });
+  // An add-on removed or not belonging to this product means the page is stale: same as a changed offer.
+  if (opts.length !== optionIds.length) return { ok: false, code: "offer_changed" };
   if (new Set(opts.map((o) => o.addon.id)).size !== opts.length) return invalid({ addonOptionIds: "Aynı ek üründen tek seçenek seçilebilir." });
 
   const settings = await getSettings();
@@ -88,6 +99,7 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
     shipping: { feeMinor: settings.shippingFeeMinor, freeThresholdMinor: settings.freeShippingThresholdMinor, vatRate: settings.shippingVatRate },
   };
   const q = quote(input);
+  if (q.grandTotalMinor !== req.expectedGrandTotalMinor) return { ok: false, code: "offer_changed" };
   const orderNo = newOrderNo();
   const publicToken = newPublicToken();
 
@@ -97,7 +109,7 @@ export async function createOrder(host: string, body: unknown, meta: { ip: strin
         orderNo, publicToken, idempotencyKey: req.idempotencyKey,
         siteId: site.id, productId: product.id, offerId: offer.id,
         status: "yeni", paymentMethod: req.paymentMethod, paymentStatus: "tahsil_bekliyor",
-        customerName: req.customerName, phone, city: trUpper(req.city), district: trUpper(req.district), address: req.address,
+        customerName: req.customerName, phone, city, district, address: req.address,
         subtotalMinor: q.subtotalMinor, discountMinor: q.discountMinor, shippingMinor: q.shippingMinor, codFeeMinor: q.codFeeMinor,
         vatTotalMinor: q.vatTotalMinor, grandTotalMinor: q.grandTotalMinor,
         pricingSnapshot: { input, quote: q }, pricingEngineVersion: PRICING_ENGINE_VERSION,

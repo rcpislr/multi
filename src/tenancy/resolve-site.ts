@@ -25,5 +25,6 @@ export async function resolveSite(host: string, opts?: { allowDraft?: boolean })
   if (!row) return null;
   const allowed = opts?.allowDraft ? ["yayinda", "yonlendir", "taslak"] : ["yayinda", "yonlendir"];
   if (!allowed.includes(row.site.status)) return null;
+  if (!opts?.allowDraft && row.product.status !== "aktif") return null;
   return { site: row.site, domain, product: row.product };
 }

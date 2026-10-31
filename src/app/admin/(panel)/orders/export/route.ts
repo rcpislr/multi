@@ -5,7 +5,11 @@ import { ORDER_STATUS_LABELS } from "@/orders/status";
 import { formatTrPhone } from "@/orders/phone";
 
 const PAYMENT = { cod_cash: "Kapıda nakit", cod_card: "Kapıda kart", online: "Online" } as const;
-const cell = (v: string) => (/[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+// Prefix cells that a spreadsheet would treat as a formula (customer-controlled text).
+const cell = (raw: string) => {
+  const v = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+};
 const tl = (minor: number) => `${Math.floor(minor / 100)},${String(minor % 100).padStart(2, "0")}`;
 
 export async function GET(request: Request) {

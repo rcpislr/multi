@@ -12,7 +12,8 @@ const meta = { ip: "1.2.3.4", userAgent: "test" };
 const body = (s: Seed, over: Record<string, unknown> = {}) => ({
   idempotencyKey: randomUUID(), offerId: s.offerIds.threeForTwo, offerVersion: 1, addonOptionIds: [s.addonOptionIds.one],
   customerName: "Ayşe Yılmaz", phone: "0532 123 45 67", city: "istanbul", district: "kadıköy",
-  address: "Moda Mah. Örnek Sok. No 1 D 2", paymentMethod: "cod_cash", policyAccepted: true, website: "", ...over,
+  address: "Moda Mah. Örnek Sok. No 1 D 2", paymentMethod: "cod_cash", policyAccepted: true, website: "",
+  expectedGrandTotalMinor: 69900, ...over,
 });
 
 async function otherProduct() {
@@ -51,7 +52,7 @@ describe("createOrder", () => {
   it("applies site price override", async () => {
     const s = await seedBasic();
     await db.update(sites).set({ priceOverrides: { "3al2": 54900 } }).where(eq(sites.id, s.siteId));
-    await createOrder("poset.localhost", body(s, { addonOptionIds: [] }), meta);
+    await createOrder("poset.localhost", body(s, { addonOptionIds: [], expectedGrandTotalMinor: 54900 }), meta);
     const [o] = await db.select().from(orders);
     expect(o!.grandTotalMinor).toBe(54900);
   });
@@ -87,8 +88,40 @@ describe("createOrder", () => {
     const s = await seedBasic();
     const other = await otherProduct();
     const r = await createOrder("poset.localhost", body(s, { addonOptionIds: [other.addonOptionId] }), meta);
-    expect(r).toMatchObject({ ok: false, code: "validation" });
+    expect(r).toEqual({ ok: false, code: "offer_changed" });
     expect(await db.select().from(orders)).toHaveLength(0);
+  });
+
+  it("treats an addon archived while the page was open as a price change", async () => {
+    const s = await seedBasic();
+    await db.update(addons).set({ archivedAt: new Date() }).where(eq(addons.id, s.addonId));
+    expect(await createOrder("poset.localhost", body(s), meta)).toEqual({ ok: false, code: "offer_changed" });
+  });
+
+  it("rejects when the total the customer saw differs from the server total", async () => {
+    const s = await seedBasic();
+    await db.update(sites).set({ priceOverrides: { "3al2": 79900 } }).where(eq(sites.id, s.siteId));
+    expect(await createOrder("poset.localhost", body(s), meta)).toEqual({ ok: false, code: "offer_changed" });
+    expect(await db.select().from(orders)).toHaveLength(0);
+  });
+
+  it("requires the expected total", async () => {
+    const s = await seedBasic();
+    expect(await createOrder("poset.localhost", body(s, { expectedGrandTotalMinor: undefined }), meta)).toMatchObject({ ok: false, code: "validation" });
+  });
+
+  it("accepts dotless/ASCII city spellings and stores the canonical name", async () => {
+    const s = await seedBasic();
+    const r = await createOrder("poset.localhost", body(s, { city: "Istanbul", district: "Kadikoy" }), meta);
+    expect(r.ok).toBe(true);
+    const [o] = await db.select().from(orders);
+    expect(o).toMatchObject({ city: "İSTANBUL", district: "KADIKÖY" });
+  });
+
+  it("stops selling when the product is archived", async () => {
+    const s = await seedBasic();
+    await db.update(products).set({ status: "arsiv" }).where(eq(products.id, s.productId));
+    expect(await createOrder("poset.localhost", body(s), meta)).toEqual({ ok: false, code: "not_found" });
   });
 
   it("rejects two options of the same addon", async () => {

@@ -17,11 +17,11 @@ const { listOrders } = await import("@/admin/orders/queries");
 const { GET: exportCsv } = await import("@/app/admin/(panel)/orders/export/route");
 
 type Seed = Awaited<ReturnType<typeof seedBasic>>;
-async function order(s: Seed, host = "poset.localhost", phone = "5321234567") {
+async function order(s: Seed, host = "poset.localhost", phone = "5321234567", customerName = "Ayşe Yılmaz") {
   const r = await createOrder(host, {
     idempotencyKey: randomUUID(), offerId: s.offerIds.two, offerVersion: 1, addonOptionIds: [],
-    customerName: "Ayşe Yılmaz", phone, city: "İSTANBUL", district: "KADIKÖY", address: "Moda Mah. Örnek Sok. No 1",
-    paymentMethod: "cod_cash", policyAccepted: true, website: "",
+    customerName, phone, city: "İSTANBUL", district: "KADIKÖY", address: "Moda Mah. Örnek Sok. No 1",
+    paymentMethod: "cod_cash", policyAccepted: true, website: "", expectedGrandTotalMinor: 59900,
   }, { ip: "1.1.1.1", userAgent: "t" });
   if (!r.ok) throw new Error(JSON.stringify(r));
   const [o] = await db.select().from(orders).where(eq(orders.orderNo, r.orderNo));
@@ -60,6 +60,22 @@ describe("order admin", () => {
     await expect(editOrder(o.id, { offerId: 2 })).rejects.toThrow();
     const [after] = await db.select().from(orders).where(eq(orders.id, o.id));
     expect(after!.grandTotalMinor).toBe(o.grandTotalMinor);
+  });
+
+  it("operator edit accepts ASCII spellings and stores canonical names", async () => {
+    const s = await seedBasic();
+    const o = await order(s);
+    const updated = await editOrder(o.id, { city: "Istanbul", district: "Besiktas" });
+    expect(updated).toMatchObject({ city: "İSTANBUL", district: "BEŞİKTAŞ" });
+  });
+
+  it("export neutralizes spreadsheet formulas", async () => {
+    const s = await seedBasic();
+    await order(s, "poset.localhost", "5321234567", '=HYPERLINK("http://x","y")');
+    session.role = "admin";
+    const text = await (await exportCsv(new Request("http://panel.localhost/admin/orders/export"))).text();
+    expect(text).toContain(`"'=HYPERLINK(""http://x"",""y"")"`);
+    expect(text).not.toMatch(/;=HYPERLINK/);
   });
 
   it("edit validates city/district", async () => {

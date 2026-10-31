@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireUser } from "@/auth/guard";
 import { db } from "@/db/client";
 import { orderEvents, orders, type Order, type OrderStatus } from "@/db/schema";
-import { isValidCityDistrict, trUpper } from "@/geo/tr";
+import { canonicalCity, canonicalDistrict } from "@/geo/tr";
 import { canTransition, ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/orders/status";
 import { zodFieldErrors, type ActionResult } from "@/admin/validation";
 import { fdInt, fdStr } from "@/admin/form-data";
@@ -50,9 +50,10 @@ export async function editOrder(id: number, patch: unknown): Promise<Order> {
     if (!cur) throw new Error("Sipariş bulunamadı.");
     const next = { ...input };
     if (next.city !== undefined || next.district !== undefined) {
-      const city = trUpper(next.city ?? cur.city);
-      const district = trUpper(next.district ?? cur.district);
-      if (!isValidCityDistrict(city, district)) throw new Error("İlçe bu ile ait değil.");
+      const city = canonicalCity(next.city ?? cur.city);
+      if (!city) throw new Error("Geçerli bir il girin.");
+      const district = canonicalDistrict(city, next.district ?? cur.district);
+      if (!district) throw new Error("İlçe bu ile ait değil.");
       next.city = city;
       next.district = district;
     }

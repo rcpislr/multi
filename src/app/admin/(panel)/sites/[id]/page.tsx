@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/auth/guard";
 import { getSiteWithDomain, siteUrl } from "@/admin/sites/store";
 import { listActiveOffers } from "@/admin/offers/store";
+import { getProduct } from "@/admin/products/store";
 import { updateSiteForm } from "@/admin/sites/actions";
 import { ActionForm, FormField } from "@/components/admin/action-form";
 import { Card, Input, Select } from "@/components/ui";
@@ -16,7 +17,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
   const row = await getSiteWithDomain(Number((await params).id));
   if (!row) notFound();
   const { site, domain } = row;
-  const offers = await listActiveOffers(site.productId);
+  const [offers, product] = await Promise.all([listActiveOffers(site.productId), getProduct(site.productId)]);
   const o = site.contentOverrides as ContentOverrides;
   const url = siteUrl(site, domain);
   return (
@@ -26,6 +27,11 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         <h1 className="text-xl font-semibold">{site.subdomain}.{domain.name}</h1>
         <a className="text-sm underline" href={`${url}/?preview=${previewToken(site.id)}`} target="_blank" rel="noreferrer">Önizle</a>
       </div>
+      {product && product.status !== "aktif" && (
+        <p className="rounded bg-red-50 p-2 text-sm text-red-700" role="alert">
+          Bu sitenin ürünü ({product.name}) aktif değil. Ürün aktif olana kadar sayfa açılmaz ve sipariş alınmaz.
+        </p>
+      )}
       {site.status === "yayinda" && !site.metaPixelId && (
         <p className="rounded bg-yellow-50 p-2 text-sm text-yellow-800" role="alert">Bu site yayında ama Meta pixel kimliği girilmemiş. Reklam dönüşümleri ölçülmeyecek.</p>
       )}
