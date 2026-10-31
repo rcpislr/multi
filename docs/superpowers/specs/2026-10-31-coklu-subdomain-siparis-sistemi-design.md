@@ -90,8 +90,8 @@ Sistem teknik olarak çalışsa bile şunlar olursa başarısız sayılır:
 
 **Barındırma** **[Öneri]**
 
-- Tek VPS (4 vCPU / 8 GB civarı), Docker Compose ile: uygulama + PostgreSQL + yedek işi.
-- Yerelde `pnpm dev` + Docker'da çalışan yerel Postgres. Yerelde subdomain testi için `*.localhost` adresleri kullanılır (ör. `poset.localhost:3000`), ek DNS ayarı gerekmez.
+- Tek VPS (4 vCPU / 8 GB civarı), Docker kullanılmadan: Node 22 + PM2 (web ve worker süreçleri), sisteme kurulu PostgreSQL 16, önde Caddy veya Cloudflare. **[Kullanıcı: Docker kullanılmayacak]**
+- Yerelde `pnpm dev` + bilgisayara doğrudan kurulu PostgreSQL. Yerelde subdomain testi için `*.localhost` adresleri kullanılır (ör. `poset.localhost:3000`), ek DNS ayarı gerekmez.
 
 **Performans**
 

@@ -8,13 +8,31 @@ Tek yönetim panelinden yönetilen, her ürünün kendi subdomain'inde yayınlan
 ## Gereksinimler
 
 - Node 22, pnpm 10
-- PostgreSQL 16 (Docker ile ya da yerel kurulum)
+- PostgreSQL 16, bilgisayara doğrudan kurulu (Docker kullanılmaz)
 
-## Kurulum
+## PostgreSQL kurulumu
+
+macOS (Homebrew):
 
 ```bash
-docker compose up -d
+brew install postgresql@16 && brew services start postgresql@16
 ```
+
+Ubuntu / Debian:
+
+```bash
+sudo apt install postgresql-16 && sudo systemctl enable --now postgresql
+```
+
+Windows: https://www.postgresql.org/download/windows/ adresindeki kurulum sihirbazıyla PostgreSQL 16 kurun; servis otomatik başlar.
+
+İki veritabanı oluşturun (kullanıcı adı ve şifreyi `.env` içindeki `DATABASE_URL` / `DATABASE_URL_TEST` ile aynı yapın):
+
+```bash
+createdb satis && createdb satis_test
+```
+
+## Kurulum
 
 ```bash
 cp .env.example .env

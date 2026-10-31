@@ -62,10 +62,10 @@ Plan 1 tamam (PR rcpislr/multi#1): subdomain yönlendirme, panel, ürün/paket/e
 | # | İş | Öncelik | Büyüklük |
 |---|---|---|---|
 | 5.1 | Ortam değişkeni doğrulaması (`src/env.ts`), ayrı `PREVIEW_SECRET` ve süreli/iptal edilebilir önizleme linki, `DATA_ENCRYPTION_KEY` | P0 | S |
-| 5.2 | Dockerfile (standalone, root olmayan kullanıcı), prod compose: web, worker, migrate, db (dışarı kapalı), yedek, Caddy/Cloudflare | P0 | M |
+| 5.2 | Docker yok **[Kullanıcı]**: `next build` (standalone), PM2 ile `web` ve `worker` süreçleri (ecosystem dosyası, otomatik yeniden başlatma, log döndürme), sisteme kurulu PostgreSQL (dışarıya kapalı), deploy betiği: `git pull → pnpm install → db:migrate → build → pm2 reload` | P0 | M |
 | 5.3 | TLS: Cloudflare wildcard + origin sertifikası (kendi domainlerin için) | P0 | M |
 | 5.4 | Yedek: gece `pg_dump` şifreli, sunucu dışına; geri yükleme betiği ve runbook | P0 | M |
-| 5.5 | GitHub Actions CI: typecheck, lint, test, e2e (Postgres servisli) | P0 | M |
+| 5.5 | GitHub Actions CI: typecheck, lint, test, e2e (runner üzerinde PostgreSQL kurulumu, Docker yok) | P0 | M |
 | 5.6 | Sağlık uç noktası, JSON log, hata izleme (Sentry), uptime | P1 | M |
 | 5.7 | Veritabanı indeksleri, domain eşleşmesini indeksli sorguya çevirme, havuz ayarı | P1 | S |
 | 5.8 | KVKK saklama/anonimleştirme işi ve panelde "müşteri verisini sil" | P1 | M |
