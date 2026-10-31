@@ -48,3 +48,10 @@ export function emptyProductContent(): ProductContent {
     theme: { primaryColor: "#E23E7B" },
   };
 }
+
+/** Site-level overrides: any top-level key; hero and theme merge field by field. */
+export const ContentOverridesSchema = ProductContentSchema.partial().extend({
+  hero: ProductContentSchema.shape.hero.partial().optional(),
+  theme: ProductContentSchema.shape.theme.partial().optional(),
+});
+export type ContentOverrides = z.infer<typeof ContentOverridesSchema>;
